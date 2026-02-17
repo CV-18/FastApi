@@ -1,19 +1,21 @@
-# 1. Usamos una imagen base de Python ligera
-FROM python:3.11-slim
+# Use the official Python base image
+FROM python:3.13-slim
 
-# 2. Evitamos que Python genere archivos .pyc y activamos logs inmediatos
+# Set the working directory inside the container
 WORKDIR /app
 
-
-# 4. Copiamos las dependencias e instalamos
+# Copy the requirements file to the working directory
 COPY requirements.txt .
+
+# Install the Python dependencies
 RUN pip install -r requirements.txt
 
-# 5. Copiamos todo el proyecto (incluye `models`, `templates`, `static`, `src`, ...)
-COPY ./src:/app/sr
+# Copy the application code to the working directory
+COPY ./src /app
+COPY .env /app
 
-# 6. Exponemos el puerto 8000
+# Expose the port on which the application will run
 EXPOSE 8000
 
-# 7. Comando para ejecutar la aplicación con uvicorn
+# Run the FastAPI application using uvicorn server
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

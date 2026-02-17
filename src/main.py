@@ -25,10 +25,9 @@ SessionDep = Annotated[Session,Depends(get_session)]
 app = FastAPI(lifespan=lifespan)
 
 
-script_dir = os.path.dirname(__file__)
-app.mount("/static", StaticFiles(directory=os.path.join(script_dir, "static")), name="static")
-templates = Jinja2Templates(directory=os.path.join(script_dir, "templates"))
 
+app.mount("/static", StaticFiles(directory="static"), name="static")
+templates = Jinja2Templates(directory="templates")
 app.include_router(api_videojuego_router)
 
 
@@ -108,34 +107,23 @@ async def create_videojuego_web(request: Request, session: SessionDep): # <--- U
     
     form_data = await request.form()
     
-    # 1. Recogida y Limpieza de datos
     titulo_form = str(form_data.get("titulo", "")).strip()
     desarrolladora_form = str(form_data.get("desarrolladora", "")).strip()
     fecha_str = form_data.get("fecha_lanzamiento") # Esto es un string "YYYY-MM-DD" o vacío
     
-    # --- CORRECCIÓN DEL BOOLEANO ---
-    # En un formulario, si el checkbox no se marca, get() devuelve None.
-    # Si se marca, devuelve "on" (o lo que sea). 
-    # Por tanto, simplemente comprobamos si no es None.
     es_multijugador_bool = form_data.get("es_multijugador") is not None
 
-    # 2. Validaciones básicas
     error_msg = None
     if not titulo_form or not desarrolladora_form:
         error_msg = "Los campos título y desarrolladora son obligatorios."
 
-    # --- CORRECCIÓN DE LA FECHA ---
     fecha_obj = None
-    if fecha_str: # Solo intentamos convertir si hay texto
+    if fecha_str: 
         try:
-            # Usamos strptime que es más robusto para formatos de formulario
             fecha_obj = datetime.strptime(str(fecha_str), "%Y-%m-%d").date()
         except ValueError:
             error_msg = "La fecha de lanzamiento no es válida."
-
-    # 3. Si hay error, devolvemos el formulario con los datos que metió el usuario y el error
     if error_msg:
-        # Creamos un objeto temporal para repoblar el formulario
         v_con_error = Videojuego(
             titulo=titulo_form, 
             desarrolladora=desarrolladora_form, 
@@ -148,8 +136,6 @@ async def create_videojuego_web(request: Request, session: SessionDep): # <--- U
             "error": error_msg
         })
     
-    # 4. Creación del DTO y Guardado
-    # Aquí ya pasamos las variables limpias (bool y date), no las del form_data
     album_create = VideojuegoCreateDTO(
         titulo=titulo_form,
         desarrolladora=desarrolladora_form,

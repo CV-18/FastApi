@@ -6,5 +6,3 @@ cryptography
 jinja2
 python-multipart
 dotenv
-psycopg2-binary
-asyncpg
