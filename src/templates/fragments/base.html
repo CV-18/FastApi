@@ -1,17 +1,18 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/styles.css') }}"></head>
+    <title>Gestor Videojuegos</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='style.css') }}">
+</head>
 <body>
     <header>
         <div class="container" style="background: transparent; box-shadow: none; margin: 0;">
             <h1>Videojuegos</h1>
             <nav>
                 <a href="/">Inicio</a>
-                <a href="/videojuegos/crear">Crear Videojuego</a>
+                <a href="/videojuegos">Ver Lista</a>
                 <a href="/videojuegos/new">Nuevo Videojuego</a>
             </nav>
         </div>
@@ -20,10 +21,8 @@
         {% block content %}
         {% endblock %}
     </main>
-
     <footer style="text-align: center; margin-top: 40px; padding: 20px; color: #666;">
         <p>&copy; 2026 Videojuegos App</p>
     </footer>
-    
 </body>
 </html>

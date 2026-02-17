@@ -6,167 +6,144 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from starlette.requests import Request
 from sqlmodel import Session, select
-
-from models.videojuego import Videojuego, VideojuegoCreateDTO, VideojuegoUpdateDTO, VideojuegoResponseDTO, map_create_videojuego_to_videojuego
-from data.db import init_db, get_session
-from data.repository_videojuego import RepositoryVideojuego
-from routers.api_videojuego_routers import router as api_videojuego_router
 from datetime import date, datetime
-
 import os
 import uvicorn
 
+# TUS IMPORTS (Ajustados a tus archivos reales)
+from models.videojuego import Videojuego, VideojuegoCreateDTO, map_create_videojuego_to_videojuego
+from data.db import init_db, get_session
+from data.repository_videojuego import RepositoryVideojuego
+from routers.api_videojuego_routers import router as api_videojuego_router
+
 @asynccontextmanager
 async def lifespan(application: FastAPI):
-    init_db()
+    # NOTA: init_db() borra y crea la base de datos al arrancar. 
+    # Si quieres persistencia real tras reiniciar, comenta la línea de dentro de init_db que hace drop_all
+    init_db() 
     yield
 
-SessionDep = Annotated[Session,Depends(get_session)]
+SessionDep = Annotated[Session, Depends(get_session)]
 app = FastAPI(lifespan=lifespan)
 
+# --- 1. CONFIGURACIÓN DE RUTAS (Vital para Docker) ---
+script_dir = os.path.dirname(__file__)
+static_abs_path = os.path.join(script_dir, "static")
+templates_abs_path = os.path.join(script_dir, "templates")
 
+app.mount("/static", StaticFiles(directory=static_abs_path), name="static")
+templates = Jinja2Templates(directory=templates_abs_path)
 
-app.mount("/static", StaticFiles(directory="static"), name="static")
-templates = Jinja2Templates(directory="templates")
 app.include_router(api_videojuego_router)
 
+
+# --- 2. RUTAS WEB ---
 
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
 @app.get("/videojuegos", response_class=HTMLResponse)
-async def get_videojuegos(request:Request,session: SessionDep):
+async def get_videojuegos(request: Request, session: SessionDep):
     repo = RepositoryVideojuego(session)
     videojuegos = repo.get_all()
-    return templates.TemplateResponse("videojuegos/videojuegos.html", {"request": request, "videojuegos": videojuegos})
+    # CORREGIDO: Se llama 'lista.html'
+    return templates.TemplateResponse("videojuegos/lista.html", {"request": request, "videojuegos": videojuegos})
 
 
+# --- 3. RUTAS DE BÚSQUEDA ---
 @app.get("/videojuegos/buscar/titulo/", response_class=HTMLResponse)
-async def get_videojuegos_by_titulo(request:Request,  session:SessionDep,titulo:str = ""):
+async def get_videojuegos_by_titulo(request: Request, session: SessionDep, titulo: str = ""):
     repo = RepositoryVideojuego(session)
-    if titulo:
-        videojuegos = repo.get_by_titulo(titulo)
-    else:
-        videojuegos = []
+    videojuegos = repo.get_by_titulo(titulo) if titulo else []
     return templates.TemplateResponse("videojuegos/lista.html", {
-        "request": request, 
-        "videojuegos": videojuegos,
-        "titulo_buscado": titulo
+        "request": request, "videojuegos": videojuegos, "titulo_buscado": titulo
     })
 
-@app.get("videojuegos/buscar/desarrolladora/", response_class=HTMLResponse)
-async def get_videojuegos_by_desarrolladora(request:Request,session: SessionDep ,desarrolladora:str = ""):
+@app.get("/videojuegos/buscar/desarrolladora/", response_class=HTMLResponse)
+async def get_videojuegos_by_desarrolladora(request: Request, session: SessionDep, desarrolladora: str = ""):
     repo = RepositoryVideojuego(session)
-    if desarrolladora:
-        videojuegos = repo.get_by_desarrolladora(desarrolladora)
-    else:
-        videojuegos = []
+    videojuegos = repo.get_by_desarrolladora(desarrolladora) if desarrolladora else []
     return templates.TemplateResponse("videojuegos/lista.html", {
-        "request": request,
-        "videojuegos": videojuegos,
-        "desarrolladora_buscando": desarrolladora
+        "request": request, "videojuegos": videojuegos, "desarrolladora_buscando": desarrolladora
     })   
 
 @app.get("/videojuegos/buscar/multijugador/", response_class=HTMLResponse)
-async def get_videojuegos_by_multijugador(request:Request, session: SessionDep, multijugador:str = ""):
+async def get_videojuegos_by_multijugador(request: Request, session: SessionDep, multijugador: str = ""):
     repo = RepositoryVideojuego(session)
     videojuegos = []
-    filtro_multijugador : Optional[bool] = None
+    # Tu HTML manda "true"/"false" como texto
     if multijugador == "true":
         videojuegos = repo.get_multijugador(True)
     elif multijugador == "false":
         videojuegos = repo.get_multijugador(False)
     else:
         videojuegos = repo.get_all()
+        
     return templates.TemplateResponse("videojuegos/lista.html", {
-        "request": request,
-        "videojuegos": videojuegos,
-        "multijugador_buscando": multijugador
+        "request": request, "videojuegos": videojuegos, "multijugador_buscando": multijugador
     })
 
 @app.get("/videojuegos/buscar/fechas/", response_class=HTMLResponse)
-async def get_videojuegos_by_intervalo_fecha_lanzamiento(request:Request, session:SessionDep, fecha_inicio:str="", fecha_final:str=""):
+async def get_videojuegos_by_intervalo_fecha_lanzamiento(request: Request, session: SessionDep, fecha_inicio: str = "", fecha_final: str = ""):
     repo = RepositoryVideojuego(session)
+    juegos = []
     if fecha_inicio and fecha_final:
         try:
-            Videojuegos = repo.get_by_intervalo_fecha_lanzamiento(date.fromisoformat(fecha_inicio), date.fromisoformat(fecha_final))
+            juegos = repo.get_by_intervalo_fecha_lanzamiento(date.fromisoformat(fecha_inicio), date.fromisoformat(fecha_final))
         except ValueError:
-            raise HTTPException(status_code=400, detail="Formato de fecha no válido. Use YYYY-MM-DD.")
-    else:
-        Videojuegos = []
+            pass 
     return templates.TemplateResponse("videojuegos/lista.html", {
-        "request": request,
-        "videojuegos": Videojuegos,
-        "fecha_inicio_buscando": fecha_inicio,
-        "fecha_final_buscando": fecha_final
+        "request": request, "videojuegos": juegos, "fecha_inicio_buscando": fecha_inicio, "fecha_final_buscando": fecha_final
     })
 
+
+# --- 4. CREAR VIDEOJUEGO (GET y POST) ---
+
+# ESTA ES LA RUTA QUE TE FALTABA PARA VER EL FORMULARIO
+@app.get("/videojuegos/new", response_class=HTMLResponse)
+async def form_nuevo_videojuego(request: Request):
+    # Pasamos objeto vacío para evitar error de Jinja
+    v_vacio = Videojuego(titulo="", desarrolladora="", fecha_lanzamiento=None, es_multijugador=False)
+    # CORREGIDO: Se llama 'form.html'
+    return templates.TemplateResponse("videojuegos/form.html", {"request": request, "videojuego": v_vacio})
+
 @app.post("/videojuegos/new", response_class=HTMLResponse)
-async def create_videojuego_web(request: Request, session: SessionDep): # <--- Usamos SessionDep, no 'Session'
-    
+async def create_videojuego_web(request: Request, session: SessionDep):
     form_data = await request.form()
     
-    titulo_form = str(form_data.get("titulo", "")).strip()
-    desarrolladora_form = str(form_data.get("desarrolladora", "")).strip()
-    fecha_str = form_data.get("fecha_lanzamiento") # Esto es un string "YYYY-MM-DD" o vacío
-    
-    es_multijugador_bool = form_data.get("es_multijugador") is not None
+    titulo = str(form_data.get("titulo", "")).strip()
+    desarrolladora = str(form_data.get("desarrolladora", "")).strip()
+    fecha_str = form_data.get("fecha_lanzamiento")
+    # Checkbox logic: si no está marcado, es None
+    es_multi = form_data.get("es_multijugador") is not None
 
     error_msg = None
-    if not titulo_form or not desarrolladora_form:
-        error_msg = "Los campos título y desarrolladora son obligatorios."
+    if not titulo or not desarrolladora:
+        error_msg = "Título y desarrolladora obligatorios."
 
     fecha_obj = None
-    if fecha_str: 
+    if fecha_str:
         try:
             fecha_obj = datetime.strptime(str(fecha_str), "%Y-%m-%d").date()
         except ValueError:
-            error_msg = "La fecha de lanzamiento no es válida."
+            error_msg = "Fecha inválida."
+
+    # Si hay error, devolvemos el formulario con el mensaje
     if error_msg:
-        v_con_error = Videojuego(
-            titulo=titulo_form, 
-            desarrolladora=desarrolladora_form, 
-            fecha_lanzamiento=fecha_obj, 
-            es_multijugador=es_multijugador_bool
-        )
-        return templates.TemplateResponse("videojuegos/album_form.html", {
-            "request": request,
-            "videojuego": v_con_error,
-            "error": error_msg
-        })
+        v_error = Videojuego(titulo=titulo, desarrolladora=desarrolladora, fecha_lanzamiento=fecha_obj, es_multijugador=es_multi)
+        # CORREGIDO: 'form.html'
+        return templates.TemplateResponse("videojuegos/form.html", {"request": request, "videojuego": v_error, "error": error_msg})
     
-    album_create = VideojuegoCreateDTO(
-        titulo=titulo_form,
-        desarrolladora=desarrolladora_form,
-        fecha_lanzamiento=fecha_obj,    # Pasamos el objeto date (o None)
-        es_multijugador=es_multijugador_bool # Pasamos el bool (True/False)
-    )
-
+    # Crear y guardar
     try:
-        repo = RepositoryVideojuego(session) # Usamos la session inyectada
-        videojuego = map_create_videojuego_to_videojuego(album_create)
-        repo.create(videojuego)
-        
-        # Si todo va bien, REDIRIGIMOS a la lista
+        dto = VideojuegoCreateDTO(titulo=titulo, desarrolladora=desarrolladora, fecha_lanzamiento=fecha_obj, es_multijugador=es_multi)
+        repo = RepositoryVideojuego(session)
+        repo.create(map_create_videojuego_to_videojuego(dto))
         return RedirectResponse(url="/videojuegos", status_code=303)
-        
     except Exception as e:
-        # Si falla la base de datos, mostramos el error en el formulario
-        v_con_error = Videojuego(
-            titulo=titulo_form, 
-            desarrolladora=desarrolladora_form, 
-            fecha_lanzamiento=fecha_obj, 
-            es_multijugador=es_multijugador_bool
-        )
-        return templates.TemplateResponse("videojuegos/album_form.html", {
-            "request": request,
-            "videojuego": v_con_error,
-            "error": f"Error interno: {str(e)}"
-        })
-
+        v_error = Videojuego(titulo=titulo, desarrolladora=desarrolladora, fecha_lanzamiento=fecha_obj, es_multijugador=es_multi)
+        return templates.TemplateResponse("videojuegos/form.html", {"request": request, "videojuego": v_error, "error": str(e)})
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="127.0.0.1", port=3000, reload=True)
-         
-
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
