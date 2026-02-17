@@ -1,0 +1,13 @@
+name: fastaoi-mysql-db
+
+services:
+ db-videojuegos:
+  image: mysql:latest
+  container_name: db-videojuegos
+  environment:
+   - MYSQL_ROOT_PASSWORD: 1234
+   - MYSQL_DATABASE: videojuegos_db
+   - MYSQL_USER: carlos
+   - MYSQL_PASSWORD: 1234
+  ports:
+   - "3306:3306"

@@ -1,0 +1,105 @@
+{% extends "fragments/base.html" %}
+
+{% block content %}
+<div class="container">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h2>📚 Catálogo de Videojuegos</h2>
+        <a href="/videojuegos/new" class="btn" style="background-color: #27ae60;">+ Nuevo Juego</a>
+    </div>
+
+    <div class="search-panel" style="margin-top: 20px;">
+        
+        <div class="search-item">
+            <form action="/videojuegos/buscar/titulo/" method="get">
+                <label>Por Título:</label>
+                <div style="display:flex; gap:5px;">
+                    <input type="text" name="titulo" placeholder="Ej: Mario..." value="{{ titulo_buscado }}">
+                    <button type="submit" class="btn">🔍</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="search-item">
+            <form action="/videojuegos/buscar/desarrolladora/" method="get">
+                <label>Por Desarrolladora:</label>
+                <div style="display:flex; gap:5px;">
+                    <input type="text" name="desarrolladora" placeholder="Ej: Nintendo..." value="{{ desarrolladora_buscando }}">
+                    <button type="submit" class="btn">🔍</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="search-item">
+            <form action="/videojuegos/buscar/multijugador/" method="get">
+                <label>Tipo de Juego:</label>
+                <div style="display:flex; gap:5px;">
+                    <select name="multijugador">
+                        <option value="">Todos</option>
+                        <option value="true" {% if multijugador_buscando == 'true' %}selected{% endif %}>Solo Multijugador</option>
+                        <option value="false" {% if multijugador_buscando == 'false' %}selected{% endif %}>Solo Un Jugador</option>
+                    </select>
+                    <button type="submit" class="btn">Filtrar</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="search-item">
+            <form action="/videojuegos/buscar/fechas/" method="get">
+                <label>Por Fechas:</label>
+                <div style="display:flex; flex-direction: column; gap:5px;">
+                    <input type="date" name="fecha_inicio" value="{{ fecha_inicio_buscando }}">
+                    <input type="date" name="fecha_final" value="{{ fecha_final_buscando }}">
+                    <button type="submit" class="btn" style="width:100%">Filtrar Rango</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {% if error %}
+        <div class="alert">{{ error }}</div>
+    {% endif %}
+
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Título</th>
+                <th>Desarrolladora</th>
+                <th>Lanzamiento</th>
+                <th>Multijugador</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for juego in videojuegos %}
+            <tr>
+                <td>{{ juego.id }}</td>
+                <td><strong>{{ juego.titulo }}</strong></td>
+                <td>{{ juego.desarrolladora }}</td>
+                <td>
+                    {% if juego.fecha_lanzamiento %}
+                        {{ juego.fecha_lanzamiento }}
+                    {% else %}
+                        <span style="color:#999;">Sin fecha</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if juego.es_multijugador %}
+                        <span style="color: green; font-weight: bold;">Sí</span>
+                    {% else %}
+                        <span style="color: #666;">No</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="5" style="text-align: center; padding: 30px;">
+                    No se han encontrado videojuegos con esos criterios.
+                    <br>
+                    <a href="/videojuegos" style="color: blue;">Volver a ver todos</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

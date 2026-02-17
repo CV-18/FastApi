@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+sqlmodel
+pymysql
+cryptography
+jinja2
+python-multipart
+dotenv
+psycopg2-binary
+asyncpg
